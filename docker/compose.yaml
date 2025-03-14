@@ -1,0 +1,24 @@
+services:
+  db:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: c11Wzi4gDzCL
+      MYSQL_DATABASE: histdb
+    ports:
+      - 3307:3306
+    volumes:
+      - dbvol:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: c11Wzi4gDzCL
+    ports:
+      - 8080:80
+    depends_on:
+      - db
+
+volumes:
+  dbvol:
