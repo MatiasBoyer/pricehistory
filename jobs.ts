@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
+// https://crontab.cronhub.io/
+
 const jobs = {
     mercadolibre: {
         cron: '0 0 0 * * *', // Cron job to run the scrapper
@@ -17,6 +19,11 @@ const jobs = {
                     secure: true, 
                     httpOnly: true
                 }
+            ],
+
+            browserArguments: [
+                '--headless',
+                '--disable-gpu',
             ],
 
             minTimeDifference: 30, // Between the last price and NOW() in MINUTES!

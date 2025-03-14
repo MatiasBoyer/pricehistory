@@ -24,10 +24,6 @@ import { CronJob } from "cron";
         isRunning: boolean,
         cron: CronJob
     }[] = [];
-    // Jobs table
-    await dbconn.promise().query(
-        'DELETE FROM jobs'
-    );
 
     // Generate jobs
     await Object.keys(jobs).forEach(async (j) => {
@@ -45,14 +41,21 @@ import { CronJob } from "cron";
                 isRunning: false,
 
                 cron: new CronJob(jobconfig.cron, async() => {
-                    await dbconn.promise()
-                    .query('UPDATE jobs SET isRunning = true, last_execution = NOW() WHERE jobname = ?', [jobconfig.script]);
-                    console.log(`Running job ${jobconfig.script}...`);
+                    let id = -1;
 
+                    await dbconn.promise()
+                    .query('INSERT job_header (jobName, start) VALUES (?, ?)', [jobconfig.script, new Date()])
+                    .then(async ([row, fields]) => {
+                        id = row['insertId'];
+                    });
+
+                    console.log(`Running job ${jobconfig.script} with id ${id}...`);
+
+                    JobWorker.jobId = id;
                     await JobWorker.run();
 
                     await dbconn.promise()
-                    .query('UPDATE jobs SET isRunning = false WHERE jobname = ?', [jobconfig.script]);
+                    .query('UPDATE job_header SET end = ? WHERE jobId = ?', [new Date(), id]);
                     console.log(`Job ${jobconfig.script} finished.`);
                 })
             }
@@ -60,11 +63,6 @@ import { CronJob } from "cron";
             internaljob.cron.start();
 
             jobs_table.push(internaljob);
-
-            dbconn.promise().query(
-                'INSERT INTO jobs (jobname, isRunning, last_execution) VALUES (?, ?, ?)',
-                [jobconfig.script, false, null]
-            );
 
         } catch (err) {
             console.error(`Failed to load scrapper ${j}:`, err);
