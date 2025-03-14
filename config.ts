@@ -1,9 +1,12 @@
+import fs from 'fs';
+import path from 'path';
+
 const config = {
     histdb: {
-        user: 'histdb_client',
-        password: '_Ca.W_PkqfiCx1]6',
-        host: 'localhost',
-        port: 3307,
+        user: fs.readFileSync(path.join(__dirname, './hidden/histdb.user')).toString(),
+        password: fs.readFileSync(path.join(__dirname, './hidden/histdb.password')).toString(),
+        host: fs.readFileSync(path.join(__dirname, './hidden/histdb.host')).toString(),
+        port: parseInt(fs.readFileSync(path.join(__dirname, './hidden/histdb.port')).toString()),
         database: 'histdb',
 
         waitForConnections: true,
