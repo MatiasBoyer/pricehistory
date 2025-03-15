@@ -26,7 +26,7 @@ const jobs = {
                 '--disable-gpu',
             ],
 
-            pagesToScrape: 10, // In a single category, navigate through how many pages?
+            pagesToScrape: 3, // In a single category, navigate through how many pages?
 
             maxCategoriesAtOnce: 5, // How many categories to scrape at once?
             minTimeBetweenScrapes: 60*24 // Between the last scrapes and NOW() in MINUTES!
