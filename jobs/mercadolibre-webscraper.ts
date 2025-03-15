@@ -190,7 +190,7 @@ class MercadoLibreScrapper extends Job {
                                             if (insert) {
                                                 this.dbpool.promise()
                                                     .query('INSERT INTO meli_items (id, price, currency) VALUES (?, ?, ?)', [id, parsedPrice, currency]);
-                                                this.Log(`Item ${id} - $${price}`);
+                                                this.Log(`Item ${id} - ${currency}${price}`);
                                             }
                                         })
                                         .catch((e) => {
