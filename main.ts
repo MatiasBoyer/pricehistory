@@ -12,6 +12,8 @@ import fs from 'fs';
 import { Job } from "./classes/job";
 import { CronJob } from "cron";
 
+import { ObtainCurrentDate } from "./helpers/global";
+
 
 // Async JOB generation and execution
 (async () => {
@@ -41,10 +43,16 @@ import { CronJob } from "cron";
                 isRunning: false,
 
                 cron: new CronJob(jobconfig.cron, async() => {
+                    if(internaljob.isRunning)
+                    {
+                        console.log(`Job ${jobconfig.script} is already running, skipping...`);
+                        return;
+                    }
                     let id = -1;
+                    internaljob.isRunning = true;
 
                     await dbconn.promise()
-                    .query('INSERT job_header (jobName, start) VALUES (?, ?)', [jobconfig.script, new Date()])
+                    .query('INSERT job_header (jobName, start) VALUES (?, ?)', [jobconfig.script, ObtainCurrentDate()])
                     .then(async ([row, fields]) => {
                         id = row['insertId'];
                     });
@@ -55,8 +63,9 @@ import { CronJob } from "cron";
                     await JobWorker.run();
 
                     await dbconn.promise()
-                    .query('UPDATE job_header SET end = ? WHERE jobId = ?', [new Date(), id]);
+                    .query('UPDATE job_header SET end = ? WHERE jobId = ?', [ObtainCurrentDate(), id]);
                     console.log(`Job ${jobconfig.script} finished.`);
+                    internaljob.isRunning = false;
                 })
             }
 
