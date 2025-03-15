@@ -18,10 +18,10 @@ export class Job {
     }
 
     async Log(message) {
-        console.log(message);
+        console.log(`[${new Date()} - JOB ${this.jobId}] ${message}`);
 
         if (this.jobId != -1) {
-            await this.dbpool.promise()
+            this.dbpool.promise()
                 .query('INSERT INTO job_log (jobId, message, timestamp) VALUES (?, ?, ?)',
                     [this.jobId, message, new Date()]);
         }
