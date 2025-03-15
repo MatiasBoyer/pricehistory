@@ -1,4 +1,5 @@
 import mysql from 'mysql2';
+import { ObtainCurrentDate } from '../helpers/global';
 
 export class Job {
 
@@ -18,12 +19,12 @@ export class Job {
     }
 
     async Log(message) {
-        console.log(`[${new Date()} - JOB ${this.jobId}] ${message}`);
+        console.log(`[${ObtainCurrentDate()} - JOB ${this.jobId}] ${message}`);
 
         if (this.jobId != -1) {
-            this.dbpool.promise()
+            return await this.dbpool.promise()
                 .query('INSERT INTO job_log (jobId, message, timestamp) VALUES (?, ?, ?)',
-                    [this.jobId, message, new Date()]);
+                    [this.jobId, message, ObtainCurrentDate()]);
         }
     }
 }
