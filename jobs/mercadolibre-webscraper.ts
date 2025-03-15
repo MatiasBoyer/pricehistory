@@ -12,8 +12,6 @@ import mysql from 'mysql2';
 
 class MercadoLibreScrapper extends Job {
 
-    categories: { category: string, href: string }[] = [];
-
     driver: WebDriver;
 
     async init(dbpool: mysql.Pool) {
@@ -49,11 +47,22 @@ class MercadoLibreScrapper extends Job {
         for (let i = 0; i < categories_elements.length; i++) {
             let category = await categories_elements[i].getText();
             let href = await categories_elements[i].getAttribute('href');
-            this.categories.push({ category, href });
+
+            this.dbpool.promise()
+                .query('SELECT categoria FROM meli_categorias WHERE categoria = ?', [category])
+                .then(([rows, fields]) => {
+                    rows = rows as any[];
+                    if (rows.length == 0) {
+                        this.dbpool.promise()
+                            .query('INSERT INTO meli_categorias (categoria, url) VALUES (?, ?)', [category, href]);
+                    }
+                });
         }
 
         this.isReady = true;
         this.isWorking = false;
+
+        this.Log("Worker ready");
     }
 
     async find_nextButton() {
@@ -70,9 +79,21 @@ class MercadoLibreScrapper extends Job {
         this.isWorking = true;
         this.Log("Starting worker");
 
-        await this.categories.forEach(async (selected_category) => {
+        let categories = await this.dbpool.promise()
+            .query('SELECT * FROM meli_categorias WHERE (last_extract < NOW() - INTERVAL ? MINUTE) OR last_extract IS NULL LIMIT 10', 
+                [jobs.mercadolibre.config.minTimeBetweenScrapes])[0] as any[];
+
+        if(categories.length == 0)
+        {
+            this.isWorking = false;
+            this.Log("No categories to scrape yet");
+            return;
+        }
+
+        for (let c = 0; c < categories.length; c++) {
+            let selected_category = categories[c];
             // load category website
-            await this.driver.get(selected_category.href);
+            await this.driver.get(selected_category.url);
 
             // 'VER TODO' button
             await this.driver.wait(until.elementLocated(By.id(':R336u:')));
@@ -117,8 +138,11 @@ class MercadoLibreScrapper extends Job {
 
                                 if (rows.length == 0) {
                                     await this.dbpool.promise()
-                                        .query('INSERT INTO meli_header (url, title, category, image) VALUES (?, ?, ?, ?)', [url, title, selected_category.category, image])
-                                        .then(([rows, fields]) => { id = rows['insertId']; });
+                                        .query('INSERT INTO meli_header (url, title, category, image) VALUES (?, ?, ?, ?)', [url, title, selected_category.categoria, image])
+                                        .then(([rows, fields]) => {
+                                            id = rows['insertId'];
+                                            this.Log(`New item found: ${id} - ${title}`);
+                                        });
                                 }
                                 else {
                                     if (rows.length > 1) this.Log(`WARNING: More than 1 row found for '${id}'`);
@@ -129,19 +153,23 @@ class MercadoLibreScrapper extends Job {
                                 await this.dbpool.promise()
                                     .query(
                                         `SELECT * FROM meli_items WHERE id = ? ORDER BY created_at DESC LIMIT 1`,
-                                        [id, jobs.mercadolibre.config.minTimeDifference]
+                                        [id]
                                     )
                                     .then(([rows, fields]) => {
                                         rows = rows as any[];
                                         if (rows.length == 0) {
                                             this.dbpool.promise()
                                                 .query('INSERT INTO meli_items (id, price) VALUES (?, ?)', [id, price]);
+
+                                                this.Log(`Item ${id} - $${price}`);
                                         }
                                         else {
                                             rows[0]['price'] = parseInt(rows[0]['price']);
                                             if (rows[0]['price'] != price) {
                                                 this.dbpool.promise()
                                                     .query('INSERT INTO meli_items (id, price) VALUES (?, ?)', [id, price]);
+
+                                                    this.Log(`Item ${id} - $${price}`);
                                             }
                                         }
                                     });
@@ -152,7 +180,10 @@ class MercadoLibreScrapper extends Job {
                 await next_button.click();
                 await this.driver.sleep(1000);
             }
-        });
+
+            await this.dbpool.promise()
+                .query('UPDATE meli_categorias SET last_extract = NOW() WHERE url = ?', [selected_category.url]);
+        }
 
         this.isWorking = false;
         this.Log("Worker finished");

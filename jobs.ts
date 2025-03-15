@@ -5,7 +5,7 @@ import path from 'path';
 
 const jobs = {
     mercadolibre: {
-        cron: '0 0 0 * * *', // Cron job to run the scrapper
+        cron: '0 */15 * * * *', // Cron job to run the scrapper
         script: 'mercadolibre-webscraper.ts', // Object to run
 
         config:
@@ -26,8 +26,10 @@ const jobs = {
                 '--disable-gpu',
             ],
 
-            minTimeDifference: 30, // Between the last price and NOW() in MINUTES!
             pagesToScrape: 10, // In a single category, navigate through how many pages?
+
+            maxCategoriesAtOnce: 5, // How many categories to scrape at once?
+            minTimeBetweenScrapes: 60*24 // Between the last scrapes and NOW() in MINUTES!
         }
     }
 }
