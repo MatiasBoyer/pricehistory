@@ -81,8 +81,8 @@ class MercadoLibreScrapper extends Job {
 
         try {
             let categories = await this.dbpool.promise()
-                .query('SELECT * FROM meli_categorias WHERE (last_extract < NOW() - INTERVAL ? MINUTE) OR last_extract IS NULL LIMIT 10',
-                    [jobs.mercadolibre.config.minTimeBetweenScrapes])
+                .query('SELECT * FROM meli_categorias WHERE (last_extract < NOW() - INTERVAL ? MINUTE) OR last_extract IS NULL LIMIT ?',
+                    [jobs.mercadolibre.config.minTimeBetweenScrapes, jobs.mercadolibre.config.maxCategoriesAtOnce])
                 .then(([rows, fields]) => {
                     rows = rows as any[];
                     return rows;
@@ -200,8 +200,16 @@ class MercadoLibreScrapper extends Job {
                             });
                     }
 
-                    await next_button.click();
-                    await this.driver.sleep(1000);
+
+                    try {
+                        await next_button.click();
+                        await this.driver.sleep(1000);
+                    }
+                    catch (e) {
+                        this.Log(`Error while clicking next button: ${e}`);
+                        this.Log(`Continuing...`);
+                        continue;
+                    }
                 }
 
                 await this.dbpool.promise()
